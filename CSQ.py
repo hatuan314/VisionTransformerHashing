@@ -7,6 +7,7 @@ from network import *
 from TransformerModel.modeling import VisionTransformer, VIT_CONFIGS
 import argparse
 import os
+import shutil
 import random
 import torch
 import torch.optim as optim
@@ -57,8 +58,8 @@ def train_val(config, bit):
     
     if not os.path.exists(config["save_path"]):
         os.makedirs(config["save_path"])
-    best_path = os.path.join(config["save_path"], config["dataset"] + "_" + config["info"] + "_" + config["net_print"] + "_Bit" + str(bit) + "-BestModel.pt")
-    trained_path = os.path.join(config["save_path"], config["dataset"] + "_" + config["info"] + "_" + config["net_print"] + "_Bit" + str(bit) + "-IntermediateModel.pt")
+    best_path = os.path.join(config["save_path"], config["dataset"] + "_" + config["info"] + "_" + config["net_print"] + "_Bit" + str(bit) + "-BestModel.pth")
+    trained_path = os.path.join(config["save_path"], config["dataset"] + "_" + config["info"] + "_" + config["net_print"] + "_Bit" + str(bit) + "-IntermediateModel.pth")
     results_path = os.path.join(config["save_path"], config["dataset"] + "_" + config["info"] + "_" + config["net_print"] + "_Bit" + str(bit) + ".txt")
     f = open(results_path, 'a')
     
@@ -123,6 +124,12 @@ def train_val(config, bit):
                     'epoch': epoch,
                 }
                 torch.save(state, best_path)
+                # Backup weights only to Drive
+                drive_backup_dir = "/content/gdrive/MyDrive/master_is/semester_3/IR/VTS-LAB/Checkpoints_Results"
+                if os.path.isdir(drive_backup_dir):
+                    pth_name = os.path.basename(best_path)
+                    shutil.copy(best_path, os.path.join(drive_backup_dir, pth_name))
+                    print(f"Backed up to Drive: {pth_name}")
             print("%s epoch:%d, bit:%d, dataset:%s, MAP:%.3f, Best MAP: %.3f" % (
                 config["info"], epoch, bit, config["dataset"], mAP, Best_mAP))
             f.write('Test | Epoch %d | MAP: %.3f | Best MAP: %.3f\n'
