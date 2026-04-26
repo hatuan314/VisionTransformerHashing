@@ -3,7 +3,11 @@
 .agent/
 .claude/
 .rtk/
+mempalace.yaml
 docs/
+
+# Local data
+dataset/
 
 # Python
 __pycache__/
