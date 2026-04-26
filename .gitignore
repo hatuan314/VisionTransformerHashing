@@ -1,0 +1,33 @@
+# AI devkit / local tooling
+.ai-devkit.json
+.agent/
+.claude/
+.rtk/
+docs/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# Notebooks
+.ipynb_checkpoints/
+
+# Training artifacts
+Checkpoints_Results/
+pretrainedVIT/
+*.pt
+*.pth
+*.npz
+
+# Data (large)
+data/*/
+!data/.gitkeep
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
