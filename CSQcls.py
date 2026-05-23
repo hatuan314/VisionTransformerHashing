@@ -205,7 +205,23 @@ class CSQLoss(torch.nn.Module):
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--dataset", type=str, default=None)
+    parser.add_argument("--bit", type=int, default=None)
+    parser.add_argument("--epoch", type=int, default=None)
+    parser.add_argument("--test_map", type=int, default=None)
+    args = parser.parse_args()
+
     config = get_config()
+    if args.dataset is not None:
+        config["dataset"] = args.dataset
+        config = config_dataset(config)
+    if args.epoch is not None:
+        config["epoch"] = args.epoch
+    if args.test_map is not None:
+        config["test_map"] = args.test_map
+    bit_list = [args.bit] if args.bit is not None else config["bit_list"]
+
     print(config)
-    for bit in config["bit_list"]:
+    for bit in bit_list:
         train_val(config, bit)
