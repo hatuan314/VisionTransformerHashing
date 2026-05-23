@@ -2,192 +2,57 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Project
+Fork of Vision Transformer Hashing (VTS, ICME 2022) — a research codebase for deep image hashing with a ViT backbone, evaluated under multiple hashing frameworks (CSQ, DSH, DPN, HashNet, GreedyHash, IDHN). No test suite, no lint config — this is a research repo extended for coursework (master's IR lab).
 
-Vision Transformer Hashing (VTS), IEEE ICME 2022 — PyTorch implementation that plugs a ViT backbone into six deep hashing frameworks (DSH, HashNet, GreedyHash, IDHN, CSQ, DPN) for image retrieval. Built on top of [ViT-pytorch](https://github.com/jeonsworld/ViT-pytorch) and [DeepHash-pytorch](https://github.com/swuxyj/DeepHash-pytorch).
-
-## Running experiments
-
-Each method is a standalone script that trains over `bit_list` (default `[64, 32, 16]`) sequentially:
+## Commands
 
 ```bash
-python DSH.py        # also: HashNet.py, GreedyHash.py, IDHN.py, CSQ.py, DPN.py
-python DSHcls.py     # *cls.py variants — same methods using the ViT [CLS] token head
+# Environment (venv at .venv, not uv-managed)
+source .venv/bin/activate
+pip install -r requirements.txt          # torch, torchvision, numpy, scipy, matplotlib, Pillow, tqdm, ml-collections
+
+# Train a hashing model (CLI args override get_config() inline)
+python CSQ.py --dataset cifar10 --bit 16 --epoch 150 --test_map 30
+python DSH.py --dataset cifar10 --bit 16
+
+# Build hash-code database from all trained checkpoints in train-models/
+python features/build_database.py        # auto-discovers *.pth/.pt by filename pattern
+
+# Search top-10 similar images for an uploaded query
+python features/search_top10_uploaded.py # edit main() to set bit/model_path/query_image_path
+
+# Colab: open main.ipynb — sets up Drive symlinks to MyDrive/master_is/semester_3/IR/VTS-LAB/
 ```
 
-`main.ipynb` runs the same scripts from a notebook. There are no tests, no lint config, and no build step.
-
-### Required setup before training
-
-- Pretrained ViT weights must exist at `pretrainedVIT/ViT-B_16.npz` and/or `pretrainedVIT/ViT-B_32.npz` (download from the `vit_models/imagenet21k` GCS bucket).
-- Datasets live under `data/` (`cifar10`, `coco`, `nuswide_21`, `imagenet`). `data/coco` and `data/nuswide_21` ship with index lists; CIFAR-10 is downloaded automatically by `utils/tools.py` on first run.
-- A CUDA GPU is assumed — `device` is hard-coded to `torch.device("cuda")` in every `get_config()`.
-- Checkpoints, result logs, and PR-curve numbers are written to `Checkpoints_Results/` as `{dataset}_{info}_{net_print}_Bit{bit}-{BestModel|IntermediateModel}.pt` and `.txt`. Training auto-resumes from `*-IntermediateModel.pt` if present.
-
-### Switching configuration
-
-There is no CLI — edit `get_config()` at the top of the method's `.py` file. Toggle commented lines to:
-
-- pick **dataset**: `cifar10` / `cifar10-2` / `coco` / `nuswide_21` / `imagenet` (this drives `n_class` and `topK` via `utils.tools.config_dataset`),
-- pick **backbone**: `AlexNet`, `ResNet`, or `VisionTransformer` with `model_type`/`pretrained_dir` set to `ViT-B_16` or `ViT-B_32`,
-- change **hash bits** via `bit_list`,
-- adjust `epoch`, `test_map` (eval cadence), `batch_size`, `crop_size`, and method-specific knobs (e.g. `alpha`).
-
-`precision_recall_curve.py` plots PR data emitted into the per-run `.txt` log.
+Single-file runs are the unit of work; there is no test runner.
 
 ## Architecture
 
-The repo is intentionally flat — one file per (method × head-style) combination — so the high-level pattern matters more than the file list:
+**Hashing algorithms** — one file per method, paired `<Method>.py` (hash output) and `<Method>cls.py` (classification head variant): `CSQ`, `DSH`, `DPN`, `HashNet`, `GreedyHash`, `IDHN`. Each defines its own `get_config()` dict (dataset, net, bit_list, optimizer, epochs, save_path) and a `train_val(config, bit)` loop. Loss class lives in the same file (e.g. `CSQLoss` in `CSQ.py`). To add a new method, copy the pattern — don't try to unify them.
 
-- **Method scripts (`{Method}.py`, `{Method}cls.py`)** — each defines `get_config()`, `train_val(config, bit)`, and a `*Loss` `nn.Module`. They share the same training skeleton: build loaders via `get_data`, build net (ViT branch passes `vit_config, crop_size, zero_head, num_classes, hash_bit`; CNN branch just passes `bit`), load pretrained ViT via `net.load_from(np.load(...))` only on a fresh start, train with Adam, evaluate every `test_map` epochs with `CalcTopMap` + `pr_curve`, persist best/intermediate checkpoints. To add or modify a method, mirror this structure rather than introducing a new abstraction.
-- **`network.py`** — CNN backbones (`AlexNet`, `ResNet`) ending in a `hash_layer` that emits `bit`-dim codes.
-- **`TransformerModel/`** — vendored ViT.
-  - `modeling.py` (used by `{Method}.py`) attaches a hashing head that pools patch tokens.
-  - `modeling_cls.py` (used by `{Method}cls.py`) attaches the head on the `[CLS]` token instead — this is the only difference between `Foo.py` and `Foocls.py` pairs.
-  - `vit_configs.py` exposes `VIT_CONFIGS` keyed by `"ViT-B_16"` / `"ViT-B_32"`; `modeling_resnet.py` is the hybrid ResNet stem from the original ViT repo.
-- **`utils/tools.py`** — central data plumbing: `config_dataset(config)` injects `topK` and `n_class` per dataset, `get_data(config)` returns `(train_loader, test_loader, dataset_loader, ...)` where `dataset_loader` is the retrieval gallery, `compute_result` extracts binary codes, `CalcTopMap` computes mAP@topK, `pr_curve` produces PR arrays. All method scripts depend on these names via `from utils.tools import *`.
+**Backbones** — selected by uncommenting a line in `get_config()`:
+- `network.py` — `AlexNet`, `ResNet` wrappers exposing a hash-bit head
+- `TransformerModel/modeling.py` — `VisionTransformer` (loaded from `pretrainedVIT/ViT-B_{16,32}.npz`), configs in `vit_configs.py`. `modeling_cls.py` is the classification variant.
 
-### Conventions worth respecting when editing
+**Shared utilities** — `utils/tools.py` is the hub: `config_dataset()` (sets `n_class`, `topK` per dataset), `get_data()` (dataloaders for cifar10/coco/nuswide/imagenet), `compute_result()` (extract binary codes), `CalcTopMap()`, `pr_curve()`, `CalcHammingDist()`. CIFAR path is **relative** (`./dataset/...`) — do not reintroduce an absolute path.
 
-- The tuple returned by the dataloader is `(image, label, ind)` — `ind` is the global index used by methods like DSH/HashNet/IDHN to maintain a running buffer (`self.U`, `self.Y`) of size `num_train × bit`. Preserve this contract when adding a new method or loss.
-- `"ViT" in config["net_print"]` is the runtime switch that decides ViT vs CNN construction and pretrained loading — keep `net_print` consistent if you add a backbone.
-- mAP and PR are only computed on epochs where `epoch % config["test_map"] == 0`; the "best" checkpoint is gated on improving mAP and triggers a PR-curve dump to the results `.txt`.
+**Checkpoints** — saved to `Checkpoints_Results/` as `{dataset}_{info}_{net_print}_Bit{bit}-{BestModel|IntermediateModel}.pth`. The `features/build_database.py` regex (`MODEL_FILENAME_RE`) depends on this exact filename schema — if you change naming in a training script, update the regex. For benchmark scenarios that compare frameworks, use subfolder convention `Checkpoints_Results/{framework}-{backbone}-{dataset}/` (e.g. `CSQ-ViT-B_32-cifar10/`) by passing `--save_path` — filename inside folder unchanged.
 
-<!-- rtk-instructions v2 -->
-# RTK (Rust Token Killer) - Token-Optimized Commands
+**Retrieval pipeline** (under `features/`):
+1. `build_database.py` — iterates `train-models/*.pth`, parses filename → config, loads net, runs `compute_result()` on the dataset loader, writes per-model `database_index/{model_stem}/codes.npy + labels.npy + paths.txt`.
+2. `search_top10_uploaded.py` — loads one model + its precomputed index, hashes a query image, ranks by Hamming distance, plots top-10 to `top10_uploaded_result.png`. Configuration is hardcoded in `main()` — bit / model_path / query_image_path must match an index built in step 1.
 
-## Golden Rule
+Detailed knowledge docs (read before non-trivial changes): `docs/ai/implementation/knowledge-csq.md`, `knowledge-build-database.md`, `knowledge-search-top10-uploaded.md`.
 
-**Always prefix commands with `rtk`**. If RTK has a dedicated filter, it uses it. If not, it passes through unchanged. This means RTK is always safe to use.
+## Conventions specific to this repo
 
-**Important**: Even in command chains with `&&`, use `rtk`:
-```bash
-# ❌ Wrong
-git add . && git commit -m "msg" && git push
+- Config is a plain `dict` returned by `get_config()` — not pydantic, not argparse-driven by default. CLI flags (`--dataset`, `--bit`, `--epoch`, `--test_map`, `--save_path`) were added on top to all 6 training scripts and only override a handful of fields; the dict is the source of truth.
+- `device` in `get_config()` auto-falls back to CPU if CUDA unavailable — allows smoke testing locally (slow for ViT) without code changes.
+- Checkpoints are `.pth` (current) — older `.pt` files exist in `train-models/` and the build_database regex accepts both. Do not rename existing files.
+- `Checkpoints_Results/` is created on demand. The Colab notebook (`main.ipynb` cell 4) sets it up as a symlink into Drive — clean up stale symlinks before recreating to avoid `FileExistsError`.
+- Backbone switching is by commenting/uncommenting lines in `get_config()`. There is no flag for it — accept that and don't refactor unless asked.
+- Google Drive backup code has been intentionally removed from checkpoint-saving paths; do not reintroduce `shutil.copy` to Drive.
 
-# ✅ Correct
-rtk git add . && rtk git commit -m "msg" && rtk git push
-```
+## Feedback language
 
-## RTK Commands by Workflow
-
-### Build & Compile (80-90% savings)
-```bash
-rtk cargo build         # Cargo build output
-rtk cargo check         # Cargo check output
-rtk cargo clippy        # Clippy warnings grouped by file (80%)
-rtk tsc                 # TypeScript errors grouped by file/code (83%)
-rtk lint                # ESLint/Biome violations grouped (84%)
-rtk prettier --check    # Files needing format only (70%)
-rtk next build          # Next.js build with route metrics (87%)
-```
-
-### Test (60-99% savings)
-```bash
-rtk cargo test          # Cargo test failures only (90%)
-rtk go test             # Go test failures only (90%)
-rtk jest                # Jest failures only (99.5%)
-rtk vitest              # Vitest failures only (99.5%)
-rtk playwright test     # Playwright failures only (94%)
-rtk pytest              # Python test failures only (90%)
-rtk rake test           # Ruby test failures only (90%)
-rtk rspec               # RSpec test failures only (60%)
-rtk test <cmd>          # Generic test wrapper - failures only
-```
-
-### Git (59-80% savings)
-```bash
-rtk git status          # Compact status
-rtk git log             # Compact log (works with all git flags)
-rtk git diff            # Compact diff (80%)
-rtk git show            # Compact show (80%)
-rtk git add             # Ultra-compact confirmations (59%)
-rtk git commit          # Ultra-compact confirmations (59%)
-rtk git push            # Ultra-compact confirmations
-rtk git pull            # Ultra-compact confirmations
-rtk git branch          # Compact branch list
-rtk git fetch           # Compact fetch
-rtk git stash           # Compact stash
-rtk git worktree        # Compact worktree
-```
-
-Note: Git passthrough works for ALL subcommands, even those not explicitly listed.
-
-### GitHub (26-87% savings)
-```bash
-rtk gh pr view <num>    # Compact PR view (87%)
-rtk gh pr checks        # Compact PR checks (79%)
-rtk gh run list         # Compact workflow runs (82%)
-rtk gh issue list       # Compact issue list (80%)
-rtk gh api              # Compact API responses (26%)
-```
-
-### JavaScript/TypeScript Tooling (70-90% savings)
-```bash
-rtk pnpm list           # Compact dependency tree (70%)
-rtk pnpm outdated       # Compact outdated packages (80%)
-rtk pnpm install        # Compact install output (90%)
-rtk npm run <script>    # Compact npm script output
-rtk npx <cmd>           # Compact npx command output
-rtk prisma              # Prisma without ASCII art (88%)
-```
-
-### Files & Search (60-75% savings)
-```bash
-rtk ls <path>           # Tree format, compact (65%)
-rtk read <file>         # Code reading with filtering (60%)
-rtk grep <pattern>      # Search grouped by file (75%)
-rtk find <pattern>      # Find grouped by directory (70%)
-```
-
-### Analysis & Debug (70-90% savings)
-```bash
-rtk err <cmd>           # Filter errors only from any command
-rtk log <file>          # Deduplicated logs with counts
-rtk json <file>         # JSON structure without values
-rtk deps                # Dependency overview
-rtk env                 # Environment variables compact
-rtk summary <cmd>       # Smart summary of command output
-rtk diff                # Ultra-compact diffs
-```
-
-### Infrastructure (85% savings)
-```bash
-rtk docker ps           # Compact container list
-rtk docker images       # Compact image list
-rtk docker logs <c>     # Deduplicated logs
-rtk kubectl get         # Compact resource list
-rtk kubectl logs        # Deduplicated pod logs
-```
-
-### Network (65-70% savings)
-```bash
-rtk curl <url>          # Compact HTTP responses (70%)
-rtk wget <url>          # Compact download output (65%)
-```
-
-### Meta Commands
-```bash
-rtk gain                # View token savings statistics
-rtk gain --history      # View command history with savings
-rtk discover            # Analyze Claude Code sessions for missed RTK usage
-rtk proxy <cmd>         # Run command without filtering (for debugging)
-rtk init                # Add RTK instructions to CLAUDE.md
-rtk init --global       # Add RTK to ~/.claude/CLAUDE.md
-```
-
-## Token Savings Overview
-
-| Category | Commands | Typical Savings |
-|----------|----------|-----------------|
-| Tests | vitest, playwright, cargo test | 90-99% |
-| Build | next, tsc, lint, prettier | 70-87% |
-| Git | status, log, diff, add, commit | 59-80% |
-| GitHub | gh pr, gh run, gh issue | 26-87% |
-| Package Managers | pnpm, npm, npx | 70-90% |
-| Files | ls, read, grep, find | 60-75% |
-| Infrastructure | docker, kubectl | 85% |
-| Network | curl, wget | 65-70% |
-
-Overall average: **60-90% token reduction** on common development operations.
-<!-- /rtk-instructions -->
+Always reply in Vietnamese (per global `~/.claude/CLAUDE.md`).
