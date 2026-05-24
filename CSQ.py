@@ -15,6 +15,29 @@ import numpy as np
 from scipy.linalg import hadamard
 torch.multiprocessing.set_sharing_strategy('file_system')
 
+BACKBONE_MAP = {
+    "AlexNet": {
+        "net": AlexNet,
+        "net_print": "AlexNet",
+    },
+    "ResNet": {
+        "net": ResNet,
+        "net_print": "ResNet",
+    },
+    "ViT-B_32": {
+        "net": VisionTransformer,
+        "net_print": "ViT-B_32",
+        "model_type": "ViT-B_32",
+        "pretrained_dir": "pretrainedVIT/ViT-B_32.npz",
+    },
+    "ViT-B_16": {
+        "net": VisionTransformer,
+        "net_print": "ViT-B_16",
+        "model_type": "ViT-B_16",
+        "pretrained_dir": "pretrainedVIT/ViT-B_16.npz",
+    },
+}
+
 def get_config():
     config = {
         "dataset": "cifar10",
@@ -212,9 +235,18 @@ if __name__ == "__main__":
     parser.add_argument("--epoch", type=int, default=None)
     parser.add_argument("--test_map", type=int, default=None)
     parser.add_argument("--save_path", type=str, default=None)
+    parser.add_argument(
+        "--backbone",
+        type=str,
+        default=None,
+        choices=list(BACKBONE_MAP.keys()),
+        help="Override backbone (default: keep get_config() hardcoded value)",
+    )
     args = parser.parse_args()
 
     config = get_config()
+    if args.backbone is not None:
+        config.update(BACKBONE_MAP[args.backbone])
     if args.dataset is not None:
         config["dataset"] = args.dataset
         config = config_dataset(config)

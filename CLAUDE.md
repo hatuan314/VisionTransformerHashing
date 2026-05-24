@@ -7,12 +7,13 @@ Fork of Vision Transformer Hashing (VTS, ICME 2022) — a research codebase for 
 ## Commands
 
 ```bash
-# Environment (venv at .venv, not uv-managed)
-source .venv/bin/activate
+# Environment (venv at venv/, not uv-managed)
+source venv/bin/activate
 pip install -r requirements.txt          # torch, torchvision, numpy, scipy, matplotlib, Pillow, tqdm, ml-collections
 
 # Train a hashing model (CLI args override get_config() inline)
 python CSQ.py --dataset cifar10 --bit 16 --epoch 150 --test_map 30
+python CSQ.py --dataset cifar10 --bit 32 --epoch 150 --backbone AlexNet --save_path Checkpoints_Results/CSQ-AlexNet-cifar10  # KB2
 python DSH.py --dataset cifar10 --bit 16
 
 # Build hash-code database from all trained checkpoints in train-models/
@@ -50,7 +51,7 @@ Detailed knowledge docs (read before non-trivial changes): `docs/ai/implementati
 - `device` in `get_config()` auto-falls back to CPU if CUDA unavailable — allows smoke testing locally (slow for ViT) without code changes.
 - Checkpoints are `.pth` (current) — older `.pt` files exist in `train-models/` and the build_database regex accepts both. Do not rename existing files.
 - `Checkpoints_Results/` is created on demand. The Colab notebook (`main.ipynb` cell 4) sets it up as a symlink into Drive — clean up stale symlinks before recreating to avoid `FileExistsError`.
-- Backbone switching is by commenting/uncommenting lines in `get_config()`. There is no flag for it — accept that and don't refactor unless asked.
+- Backbone switching is by commenting/uncommenting lines in `get_config()`. There is no flag for it — accept that and don't refactor unless asked. **Exception: `CSQ.py` has `--backbone {AlexNet,ResNet,ViT-B_32,ViT-B_16}` CLI flag added for KB2 (Benchmark Scenario 002). All other framework files still use comment/uncomment.**
 - Google Drive backup code has been intentionally removed from checkpoint-saving paths; do not reintroduce `shutil.copy` to Drive.
 
 ## Feedback language
