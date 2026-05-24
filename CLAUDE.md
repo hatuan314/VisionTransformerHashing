@@ -52,6 +52,7 @@ Detailed knowledge docs (read before non-trivial changes): `docs/ai/implementati
 - Checkpoints are `.pth` (current) — older `.pt` files exist in `train-models/` and the build_database regex accepts both. Do not rename existing files.
 - `Checkpoints_Results/` is created on demand. The Colab notebook (`main.ipynb` cell 4) sets it up as a symlink into Drive — clean up stale symlinks before recreating to avoid `FileExistsError`.
 - Backbone switching is by commenting/uncommenting lines in `get_config()`. There is no flag for it — accept that and don't refactor unless asked. **Exception: `CSQ.py` has `--backbone {AlexNet,ResNet,ViT-B_32,ViT-B_16}` CLI flag added for KB2 (Benchmark Scenario 002). All other framework files still use comment/uncomment.**
+- `*cls.py` variants (CSQcls, DPNcls, DSHcls, GreedyHashcls, HashNetcls, IDHNcls) now have unified 5-flag CLI (`--dataset`, `--bit`, `--epoch`, `--test_map`, `--save_path`) added for KB3 (Benchmark Scenario 003). Backbone is fixed ViT-B_32 — no `--backbone` flag for cls variants. Output folder convention: `Checkpoints_Results/{Method}cls-ViT-B_32-{dataset}/`.
 - Google Drive backup code has been intentionally removed from checkpoint-saving paths; do not reintroduce `shutil.copy` to Drive.
 
 ## Feedback language

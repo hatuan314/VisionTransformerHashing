@@ -30,7 +30,7 @@ def get_config():
         
         "bit_list": [16],
         "optimizer": {"type": optim.Adam, "optim_params": {"lr": 1e-5}},
-        "device": torch.device("cuda"), "save_path": "Checkpoints_Results",
+        "device": torch.device("cuda" if torch.cuda.is_available() else "cpu"), "save_path": "Checkpoints_Results",
         "epoch": 150, "test_map": 30, "batch_size": 32, "resize_size": 256, "crop_size": 224,
         "info": "CSQcls", "lambda": 0.0001,
     }
@@ -210,6 +210,7 @@ if __name__ == "__main__":
     parser.add_argument("--bit", type=int, default=None)
     parser.add_argument("--epoch", type=int, default=None)
     parser.add_argument("--test_map", type=int, default=None)
+    parser.add_argument("--save_path", type=str, default=None)
     args = parser.parse_args()
 
     config = get_config()
@@ -220,6 +221,8 @@ if __name__ == "__main__":
         config["epoch"] = args.epoch
     if args.test_map is not None:
         config["test_map"] = args.test_map
+    if args.save_path is not None:
+        config["save_path"] = args.save_path
     bit_list = [args.bit] if args.bit is not None else config["bit_list"]
 
     print(config)

@@ -4,6 +4,7 @@
 
 from utils.tools import *
 from network import *
+import argparse
 import os
 import torch
 import torch.optim as optim
@@ -28,7 +29,7 @@ def get_config():
         
         "bit_list": [64,32,16],
         "optimizer": {"type": optim.Adam, "optim_params": {"lr": 1e-5}},
-        "device": torch.device("cuda"), "save_path": "Checkpoints_Results",
+        "device": torch.device("cuda" if torch.cuda.is_available() else "cpu"), "save_path": "Checkpoints_Results",
         "epoch": 150, "test_map": 30, "batch_size": 32, "resize_size": 256, "crop_size": 224,
         "info": "DPNcls", "m": 1, "p": 0.5,
     }
@@ -193,8 +194,27 @@ class DPNLoss(torch.nn.Module):
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--dataset", type=str, default=None)
+    parser.add_argument("--bit", type=int, default=None)
+    parser.add_argument("--epoch", type=int, default=None)
+    parser.add_argument("--test_map", type=int, default=None)
+    parser.add_argument("--save_path", type=str, default=None)
+    args = parser.parse_args()
+
     config = get_config()
+    if args.dataset is not None:
+        config["dataset"] = args.dataset
+        config = config_dataset(config)
+    if args.epoch is not None:
+        config["epoch"] = args.epoch
+    if args.test_map is not None:
+        config["test_map"] = args.test_map
+    if args.save_path is not None:
+        config["save_path"] = args.save_path
+    bit_list = [args.bit] if args.bit is not None else config["bit_list"]
+
     print(config)
-    for bit in config["bit_list"]:
+    for bit in bit_list:
         train_val(config, bit)
 
