@@ -3,6 +3,7 @@
 .agent/
 .claude/
 .rtk/
+.serena/
 mempalace.yaml
 docs/
 
