@@ -22,6 +22,7 @@ python features/build_database.py        # auto-discovers *.pth/.pt by filename 
 # Search top-10 similar images for an uploaded query
 python features/search_top10_uploaded.py # edit main() to set bit/model_path/query_image_path
 
+# Colab KB5: open main_scenario_005.ipynb — CSQ + ViT-B_32, bit 16/32/64 song song
 # Colab: open main.ipynb — sets up Drive symlinks to MyDrive/master_is/semester_3/IR/VTS-LAB/
 ```
 

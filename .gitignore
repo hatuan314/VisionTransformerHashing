@@ -2,8 +2,10 @@
 .ai-devkit.json
 .agent/
 .claude/
+.cursor/
 .rtk/
 .serena/
+.worktrees/
 mempalace.yaml
 docs/
 
