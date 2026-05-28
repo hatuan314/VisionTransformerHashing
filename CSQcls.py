@@ -63,7 +63,7 @@ def train_val(config, bit):
     
     if os.path.exists(trained_path):
         print('==> Resuming from checkpoint..')
-        checkpoint = torch.load(trained_path)
+        checkpoint = torch.load(trained_path, weights_only=False)
         net.load_state_dict(checkpoint['net'])
         Best_mAP = checkpoint['Best_mAP']
         start_epoch = checkpoint['epoch'] + 1
