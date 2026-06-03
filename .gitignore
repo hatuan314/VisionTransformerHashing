@@ -30,9 +30,9 @@ pretrainedVIT/
 *.pth
 *.npz
 
-# Data (large)
-data/*/
-!data/.gitkeep
+# Data (large) — list files tracked, actual images excluded
+data/imagenet/image/
+data/imagenet/val_image/
 
 # OS / editor
 .DS_Store
