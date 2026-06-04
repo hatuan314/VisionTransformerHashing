@@ -235,6 +235,7 @@ if __name__ == "__main__":
     parser.add_argument("--epoch", type=int, default=None)
     parser.add_argument("--test_map", type=int, default=None)
     parser.add_argument("--save_path", type=str, default=None)
+    parser.add_argument("--data_path", type=str, default=None, help="Override data_path (dataset root directory)")
     parser.add_argument(
         "--backbone",
         type=str,
@@ -256,6 +257,8 @@ if __name__ == "__main__":
         config["test_map"] = args.test_map
     if args.save_path is not None:
         config["save_path"] = args.save_path
+    if args.data_path is not None:
+        config["data_path"] = args.data_path
     bit_list = [args.bit] if args.bit is not None else config["bit_list"]
 
     print(config)
